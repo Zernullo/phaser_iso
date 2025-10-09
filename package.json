@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "blockly": "^12.3.0",
+    "express": "^5.1.0",
+    "path": "^0.12.7",
+    "phaser": "^3.90.0",
+    "phaser3-plugin-isometric": "^0.0.7"
+  },
+  "devDependencies": {
+    "vite": "^7.1.7"
+  }
+}

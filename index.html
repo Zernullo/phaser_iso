@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Isometric Game API Demo</title>
+  <style>
+    html, body { 
+      height: 100%; 
+      margin: 0; 
+      background: #0f1220; 
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #game { 
+      width: 800px; 
+      height: 600px; 
+      border: 2px solid #333;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+  
+  <!-- Load the isometric game with API -->
+  <script type="module" src="server/src/isoMoveExample.js"></script>
+  
+  <!-- Load the demo script as a module -->
+  <script type="module" src="server/src/isoDemo.js"></script>
+</body>
+</html>
