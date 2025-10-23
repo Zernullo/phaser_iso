@@ -1,22 +1,25 @@
+// Phaser is a popular HTML5 game framework
 import Phaser from 'phaser';
-import IsoPlugin from 'phaser3-plugin-isometric';
+import IsoPlugin from 'phaser3-plugin-isometric'; // This is an plugin that allows isometric view, 3d view in a 2d plane
 
 export default class Level extends Phaser.Scene {
   constructor() {
     super({
       key: 'Level1',
-      mapAdd: { isoPlugin: 'iso' }
+      mapAdd: { isoPlugin: 'iso' } // Register the isometric plugin
     });
 
-    this.tileSize = 38;
-    this.gridWidth = 7;
-    this.gridHeight = 7;
-    this.goalPosition = { x: 4, y: 2 };
+    this.tileSize = 38; // Size of each tile
+    this.gridWidth = 7; // Number of tiles horizontally
+    this.gridHeight = 7; // Number of tiles vertically
+    this.goalPosition = { x: 4, y: 2 }; // Goal tile position
   }
 
+  // Preload assets, load images and plugins
   preload() {
-    this.load.image('tile', 'assets/tile.png');
-    this.load.image('goal', 'assets/goal.png'); // Add a small green tile
+    this.load.image('tile', 'assets/tile.png'); // Basic tile image located in assets folder
+    this.load.image('goal', 'assets/goal.png'); // Goal image located in assets folder
+    // Load the isometric plugin
     this.load.scenePlugin({
       key: 'IsoPlugin',
       url: IsoPlugin,
@@ -24,13 +27,14 @@ export default class Level extends Phaser.Scene {
     });
   }
 
+  // Create game objects, set up the scene
   create() {
     console.log('Level 1 started');
     this.isoGroup = this.add.group();
     this.playerGroup = this.add.group();
     this.goalGroup = this.add.group();
 
-    this.iso.projector.origin.setTo(0.5, 0.3);
+    this.iso.projector.origin.setTo(0.5, 0.3); // Set the origin for isometric projection
 
     this.createPlayerTexture();
     this.createGoalTexture();
@@ -60,8 +64,9 @@ export default class Level extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
   }
 
+  // This function is called every frame
   update() {
-    // Basic keyboard testing — optional
+    // For testing purposes, use right arrow key to move forward
     if (Phaser.Input.Keyboard.JustDown(this.cursors.right)) {
       this.moveForward();
     }
