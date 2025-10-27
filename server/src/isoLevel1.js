@@ -3,23 +3,21 @@ import IsoPlugin from 'phaser3-plugin-isometric';
 
 class isoLevel1 extends Phaser.Scene {
   constructor() {
-    const sceneConfig = {
+    super({
       key: 'isoLevel1',
       plugins: {
         scene: [
           { key: 'IsoPlugin', plugin: IsoPlugin, mapping: 'iso' }
         ]
       }
-    };
-
-    super(sceneConfig);
+    });
     
     // Grid properties (matching isoInteractionExample)
     this.tileSize = 32;
     this.gridWidth = 7;  // 256/38 ≈ 6.7, so 7 tiles
     this.gridHeight = 7;
-    this.tileWidth = 32;   // width of one tile in pixels
-    this.tileHeight = 32;  // height of one tile in pixels
+    this.tileWidth = 64;   // width of one tile in pixels
+    this.tileHeight = 64;  // height of one tile in pixels
     
     // Player properties
     this.player = null;
@@ -34,23 +32,40 @@ class isoLevel1 extends Phaser.Scene {
   // Preload assets and plugins
   preload() {
     // Load the Tiled map JSON
-    this.load.json('map1', 'assets/Map 1.json');
-    this.load.spritesheet('tiles', 'assets/tileset1.png',{ frameWidth: 32, frameHeight: 32 });
+    this.load.json('map1', 'server/assets/Construction R1.json');
+    this.load.spritesheet('tiles', 'server/assets/iso-64x64-outside.png',{ frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('buildings', 'server/assets/iso-64x64-building.png',{ frameWidth: 64, frameHeight: 64 });
   }
 
   // Create game objects and set up the scene
   create() {
+    console.log('ISO plugin:', this.iso);
+    if (this.iso && this.iso.projector) { // Add a final check just to be safe
+        this.iso.projector.origin.setTo(0.5, 0.3);
+    } else {
+        console.error("IsoPlugin is still unavailable in create!");
+        return;
+    }
+
     console.log('Scene create() called');
     this.isoGroup = this.add.group();
     this.playerGroup = this.add.group();
 
-    this.iso.projector.origin.setTo(0.5, 0.3);
 
     // Create a simple colored rectangle for the player sprite
     this.createPlayerTexture();
 
     // Create the tile grid
     this.spawnTilesFromMap();
+    // Center the Camera
+    const mapCenterGridX = this.gridWidth / 2;
+    const mapCenterGridY = this.gridHeight / 2;
+
+    const isoCenterX = (mapCenterGridX - mapCenterGridY) * (this.tileWidth / 2);
+    const isoCenterY = (mapCenterGridX + mapCenterGridY) * (this.tileHeight / 2);
+
+    this.cameras.main.centerOn(isoCenterX, isoCenterY - this.tileHeight * 2); 
+    this.cameras.main.setZoom(1.5);
     
     // Create the player sprite
     this.createPlayer();
@@ -78,28 +93,51 @@ class isoLevel1 extends Phaser.Scene {
   }
 
   spawnTilesFromMap() {
-    const mapData = this.cache.json.get('map1'); // map JSON key
-    const layer = mapData.layers[0];
+   const mapData = this.cache.json.get('map1');
+    this.gridWidth = mapData.width;
+    this.gridHeight = mapData.height;
 
     this.isoGroup = this.add.group();
 
-    for (let y = 0; y < layer.height; y++) {
+    // Iterate over ALL layers in the Tiled map data
+    mapData.layers.forEach(layer => {
+      if (layer.type !== 'tilelayer') return; // Skip non-tile layers
+
+      for (let y = 0; y < layer.height; y++) {
         for (let x = 0; x < layer.width; x++) {
-        const tileIndex = layer.data[y * layer.width + x];
-        if (tileIndex > 0) {
+          const tileIndex = layer.data[y * layer.width + x];
+          
+          // Tiled GIDs start from 1. 0 means no tile.
+          if (tileIndex > 0) {
+            // Isometric projection
             const isoX = (x - y) * (this.tileWidth / 2);
             const isoY = (x + y) * (this.tileHeight / 2);
 
+            let textureKey, frame;
+            // Determine texture and frame based on Global Tile ID (GID)
+            if (tileIndex < 81) {
+                // Tileset 'iso-64x64-building' has firstgid: 1
+                textureKey = 'buildings';
+                frame = tileIndex - 1; 
+            } else {
+                // Tileset 'iso-64x64-outside' has firstgid: 81
+                textureKey = 'tiles';
+                frame = tileIndex - 81;
+            }
+            
+            // Z-axis placement for layering
+            // Use the layer index to set a distinct Z for each layer, ensuring they stack correctly
+            const z = mapData.layers.indexOf(layer) * 0.1; 
 
-            // Phaser frame numbers are 0-based, Tiled IDs are 1-based
-            const frame = tileIndex - 1;
-
-            const tile = this.add.isoSprite(isoX, isoY, 0, 'tiles', this.isoGroup).setFrame(frame);
+            const tile = this.add.isoSprite(isoX, isoY, z, textureKey, frame);
+            this.isoGroup.add(tile);
             tile.setInteractive();
+          }
         }
-        }
-    }
-}
+      }
+    });
+    console.log('Tiles spawned:', this.isoGroup.getLength());
+  } 
 
 
   
