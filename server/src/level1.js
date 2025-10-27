@@ -1,4 +1,4 @@
-// Phaser is a popular HTML5 game framework
+// This file is currently not in use.
 import Phaser from 'phaser';
 import IsoPlugin from 'phaser3-plugin-isometric'; // This is an plugin that allows isometric view, 3d view in a 2d plane
 
@@ -72,6 +72,7 @@ export default class Level extends Phaser.Scene {
     }
   }
 
+  // Create a simple red square texture for the player
   createPlayerTexture() {
     const graphics = this.add.graphics();
     graphics.fillStyle(0xff4444);
@@ -80,6 +81,7 @@ export default class Level extends Phaser.Scene {
     graphics.destroy();
   }
 
+  // Create a simple green square texture for the goal
   createGoalTexture() {
     const graphics = this.add.graphics();
     graphics.fillStyle(0x44ff44);
@@ -88,6 +90,7 @@ export default class Level extends Phaser.Scene {
     graphics.destroy();
   }
 
+  // Spawn the isometric tiles to form the grid
   spawnTiles() {
     let tile;
     for (let xx = 0; xx < 256; xx += this.tileSize) {
@@ -98,6 +101,7 @@ export default class Level extends Phaser.Scene {
     }
   }
 
+  // Create the player sprite at the starting position
   createPlayer() {
     const isoX = 2 * this.tileSize;
     const isoY = 2 * this.tileSize;
@@ -105,6 +109,7 @@ export default class Level extends Phaser.Scene {
     this.player.setScale(1.5);
   }
 
+  // Create the goal sprite at the goal position
   createGoal() {
     const isoX = this.goalPosition.x * this.tileSize;
     const isoY = this.goalPosition.y * this.tileSize;
@@ -112,6 +117,7 @@ export default class Level extends Phaser.Scene {
     this.goal.setScale(1.5);
   }
 
+  // Move the player one tile forward in the current direction
   moveForward() {
     if (this.isMoving) return;
     this.isMoving = true;
@@ -137,6 +143,7 @@ export default class Level extends Phaser.Scene {
     });
   }
 
+  // Check if the player has reached the goal position
   checkGoalReached() {
     if (
       this.playerGridX === this.goalPosition.x &&

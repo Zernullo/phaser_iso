@@ -1,19 +1,25 @@
 import Phaser, { Game, Scene } from 'phaser';
 import IsoPlugin from 'phaser3-plugin-isometric';
 
-class IsoMoveExample extends Phaser.Scene {
+class isoLevel1 extends Phaser.Scene {
   constructor() {
     const sceneConfig = {
-      key: 'IsoMoveExample',
-      mapAdd: { isoPlugin: 'iso' }
+      key: 'isoLevel1',
+      plugins: {
+        scene: [
+          { key: 'IsoPlugin', plugin: IsoPlugin, mapping: 'iso' }
+        ]
+      }
     };
 
     super(sceneConfig);
     
     // Grid properties (matching isoInteractionExample)
-    this.tileSize = 38;
+    this.tileSize = 32;
     this.gridWidth = 7;  // 256/38 ≈ 6.7, so 7 tiles
     this.gridHeight = 7;
+    this.tileWidth = 32;   // width of one tile in pixels
+    this.tileHeight = 32;  // height of one tile in pixels
     
     // Player properties
     this.player = null;
@@ -27,12 +33,9 @@ class IsoMoveExample extends Phaser.Scene {
 
   // Preload assets and plugins
   preload() {
-    this.load.image('tile', 'assets/tile.png');
-    this.load.scenePlugin({
-      key: 'IsoPlugin',
-      url: IsoPlugin,
-      sceneKey: 'iso'
-    });
+    // Load the Tiled map JSON
+    this.load.json('map1', 'assets/Map 1.json');
+    this.load.spritesheet('tiles', 'assets/tileset1.png',{ frameWidth: 32, frameHeight: 32 });
   }
 
   // Create game objects and set up the scene
@@ -47,7 +50,7 @@ class IsoMoveExample extends Phaser.Scene {
     this.createPlayerTexture();
 
     // Create the tile grid
-    this.spawnTiles();
+    this.spawnTilesFromMap();
     
     // Create the player sprite
     this.createPlayer();
@@ -74,41 +77,45 @@ class IsoMoveExample extends Phaser.Scene {
     graphics.destroy();
   }
 
-  spawnTiles() {
-    var tile;
+  spawnTilesFromMap() {
+    const mapData = this.cache.json.get('map1'); // map JSON key
+    const layer = mapData.layers[0];
 
-    // Use the same coordinate system as the interaction example
-    for (var xx = 0; xx < 256; xx += 38) {
-      for (var yy = 0; yy < 256; yy += 38) {
-        tile = this.add.isoSprite(xx, yy, 0, 'tile', this.isoGroup);
-        tile.setInteractive();
+    this.isoGroup = this.add.group();
 
-        tile.on('pointerover', function() {
-          this.setTint(0x86bfda);
-          this.isoZ += 5;
-        });
+    for (let y = 0; y < layer.height; y++) {
+        for (let x = 0; x < layer.width; x++) {
+        const tileIndex = layer.data[y * layer.width + x];
+        if (tileIndex > 0) {
+            const isoX = (x - y) * (this.tileWidth / 2);
+            const isoY = (x + y) * (this.tileHeight / 2);
 
-        tile.on('pointerout', function() {
-          this.clearTint();
-          this.isoZ -= 5;
-        });
-      }
+
+            // Phaser frame numbers are 0-based, Tiled IDs are 1-based
+            const frame = tileIndex - 1;
+
+            const tile = this.add.isoSprite(isoX, isoY, 0, 'tiles', this.isoGroup).setFrame(frame);
+            tile.setInteractive();
+        }
+        }
     }
-  }
+}
+
+
   
   createPlayer() {
-    // Convert grid position to world coordinates
-    const isoX = this.playerGridX * this.tileSize;
-    const isoY = this.playerGridY * this.tileSize;
-    
+    const isoX = (this.playerGridX - this.playerGridY) * (this.tileWidth / 2);
+    const isoY = (this.playerGridX + this.playerGridY) * (this.tileHeight / 2);
+
     this.player = this.add.isoSprite(isoX, isoY, 10, 'player', this.playerGroup);
-    this.player.setScale(1.5); // Make it a bit larger
-  }
+    this.player.setScale(2);
+}
+
   
   update() {
     // Update loop - no keyboard input, controlled by API only
   }
-} // End of IsoMoveExample class
+} // End of isoLevel1 class
 
 // ------------------ ACTION QUEUE + PUBLIC API ------------------
 let game = null; // Will be set after game is created
@@ -145,7 +152,7 @@ async function _drain() {
 // Helper to get scene
 function _getScene() {
   if (!game) return null;
-  return game.scene.getScene('IsoMoveExample');
+  return game.scene.getScene('isoLevel1');
 }
 
 // ------------------ API Implementation ------------------
@@ -244,9 +251,9 @@ function _moveToPosition(scene, gridX, gridY) {
     if (!_isValidPosition(scene, gridX, gridY)) return resolve(false);
     
     scene.isMoving = true;
-    
-    const isoX = gridX * scene.tileSize;
-    const isoY = gridY * scene.tileSize;
+
+    const isoX = (gridX - gridY) * (scene.tileWidth / 2);
+    const isoY = (gridX + gridY) * (scene.tileHeight / 2);
     
     scene.tweens.add({
       targets: scene.player,
@@ -282,9 +289,9 @@ function _setPosition(tx, ty) {
     if (!scene) return resolve(false);
     if (!_isValidPosition(scene, tx, ty)) return resolve(false);
     
-    const isoX = tx * scene.tileSize;
-    const isoY = ty * scene.tileSize;
-    
+    const isoX = (tx - ty) * (scene.tileWidth / 2);
+    const isoY = (tx + ty) * (scene.tileHeight / 2);
+
     scene.player.isoX = isoX;
     scene.player.isoY = isoY;
     scene.playerGridX = tx;
@@ -330,7 +337,7 @@ let config = {
   height: 600,
   pixelArt: true,
   parent: 'game',
-  scene: IsoMoveExample,
+  scene: isoLevel1,
   physics: {
     default: 'arcade'
   }
