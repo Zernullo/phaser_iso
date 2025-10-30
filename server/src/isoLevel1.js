@@ -12,13 +12,13 @@ class IsoMoveExample extends Phaser.Scene {
     
     // Grid-related values (will be updated based on map size)
     this.tileSize = 38;
-    this.gridWidth = 0;
+    this.gridWidth = 0; //These two set to 0 because we will get from the map
     this.gridHeight = 0;
     
     // Player properties
     this.player = null;
-    this.playerGridX = 2;
-    this.playerGridY = 2;
+    this.playerGridX = 2; // Starting position X
+    this.playerGridY = 2; // Starting position Y
     this.playerDirection = 0; // 0=N, 1=E, 2=S, 3=W
     
     this.isMoving = false;
@@ -42,23 +42,20 @@ class IsoMoveExample extends Phaser.Scene {
   create() {
     console.log('Scene create() called');
 
-    // If using IsoPlugin (optional for isometric projection)
+    // This is for isometric projection
     this.iso.projector.origin.setTo(0.5, 0.3);
 
     // Load map
     const map = this.make.tilemap({ key: 'iso-map' });
 
-    // Load tilesets — names must match your Tiled tileset names
+    // Load tilesets — names must match your Tiled tileset names/Json exactly
     const groundTileset = map.addTilesetImage('iso-64x64-outside', 'tiles-outside');
     const buildingTileset = map.addTilesetImage('iso-64x64-building', 'tiles-building');
-
-    // Debug: confirm what’s in your map
-    console.log('Map layers:', map.layers.map(l => l.name));
 
     // ----- CREATE LAYERS -----
     // Ground layer (outside)
     const bottom1 = map.createLayer('Bottom 1', groundTileset, 0, 0);
-
+    
     // Building layers stacked above
     const bottom2 = map.createLayer('Bottom 2', buildingTileset, 0, 0);
     const bottom3 = map.createLayer('Bottom 3', buildingTileset, 0, 0);
@@ -77,12 +74,12 @@ class IsoMoveExample extends Phaser.Scene {
     // ----- CAMERA -----
     this.cameras.main.setBounds(-775, -250, map.widthInPixels, map.heightInPixels);
     this.cameras.main.setZoom(0.5);
-    // this.cameras.main.startFollow(this.player);
+    // this.cameras.main.startFollow(this.player); // Basically the map follow the player, dont think we need this
 
     // ----- STORE MAP INFO -----
     this.gridWidth = map.width;
     this.gridHeight = map.height;
-    this.tileSize = map.tileWidth; // typically 64 for your tiles
+    this.tileSize = map.tileWidth; 
 
     // ----- REGISTER SCENE -----
     this.registry.set('isoScene', this);
@@ -104,7 +101,7 @@ class IsoMoveExample extends Phaser.Scene {
     const isoX = this.playerGridX * this.tileSize;
     const isoY = this.playerGridY * this.tileSize;
     this.player = this.add.isoSprite(isoX, isoY, 10, 'player');
-    this.player.setOrigin(0.5, 1);
+    // this.player.setOrigin(0.5, 1); // Supposely set the player origin to bottom center, but seems off
     this.player.setScale(1.5);
   }
 
