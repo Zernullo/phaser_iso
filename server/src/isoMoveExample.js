@@ -10,24 +10,28 @@ class IsoMoveExample extends Phaser.Scene {
 
     super(sceneConfig);
     
-    // Grid properties (matching isoInteractionExample)
+    // Grid-related values (will be updated based on map size)
     this.tileSize = 38;
-    this.gridWidth = 7;  // 256/38 ≈ 6.7, so 7 tiles
-    this.gridHeight = 7;
+    this.gridWidth = 0; //These two set to 0 because we will get from the map
+    this.gridHeight = 0;
     
     // Player properties
     this.player = null;
-    this.playerGridX = 2;
-    this.playerGridY = 2;
-    this.playerDirection = 0; // 0=North, 1=East, 2=South, 3=West
+    this.playerGridX = 2; // Starting position X
+    this.playerGridY = 2; // Starting position Y
+    this.playerDirection = 0; // 0=N, 1=E, 2=S, 3=W
     
-    // Movement
     this.isMoving = false;
   }
 
-  // Preload assets and plugins
   preload() {
-    this.load.image('tile', 'assets/tile.png');
+    // Load your isometric map and tilesets
+    this.load.tilemapTiledJSON('iso-map', new URL('../assets/Construction R1.json', import.meta.url).href);
+    this.load.image('tiles-outside', new URL('../assets/iso-64x64-outside.png', import.meta.url).href);
+    this.load.image('tiles-building', new URL('../assets/iso-64x64-building.png', import.meta.url).href);
+
+
+    // Load the IsoPlugin
     this.load.scenePlugin({
       key: 'IsoPlugin',
       url: IsoPlugin,
@@ -35,89 +39,81 @@ class IsoMoveExample extends Phaser.Scene {
     });
   }
 
-  // Create game objects and set up the scene
   create() {
     console.log('Scene create() called');
-    this.isoGroup = this.add.group();
-    this.playerGroup = this.add.group();
 
+    // This is for isometric projection
     this.iso.projector.origin.setTo(0.5, 0.3);
 
-    // Create a simple colored rectangle for the player sprite
-    this.createPlayerTexture();
+    // Load map
+    const map = this.make.tilemap({ key: 'iso-map' });
 
-    // Create the tile grid
-    this.spawnTiles();
+    // Load tilesets — names must match your Tiled tileset names/Json exactly
+    const groundTileset = map.addTilesetImage('iso-64x64-outside', 'tiles-outside');
+    const buildingTileset = map.addTilesetImage('iso-64x64-building', 'tiles-building');
+
+    // ----- CREATE LAYERS -----
+    // Ground layer (outside)
+    const bottom1 = map.createLayer('Bottom 1', groundTileset, 0, 0);
     
-    // Create the player sprite
+    // Building layers stacked above
+    const bottom2 = map.createLayer('Bottom 2', buildingTileset, 0, 0);
+    const bottom3 = map.createLayer('Bottom 3', buildingTileset, 0, 0);
+    const top1    = map.createLayer('Top 1', buildingTileset, 0, 0);
+
+    // ----- DEPTH ORDER -----
+    bottom1.setDepth(0);  // ground
+    bottom2.setDepth(1);  // lower building
+    bottom3.setDepth(2);  // upper building
+    top1.setDepth(3);     // roof / top-most
+
+    // ----- PLAYER -----
+    this.createPlayerTexture();
     this.createPlayer();
-    
-    // Store scene reference for API
+
+    // ----- CAMERA -----
+    this.cameras.main.setBounds(-775, -250, map.widthInPixels, map.heightInPixels);
+    this.cameras.main.setZoom(0.5);
+    // this.cameras.main.startFollow(this.player); // Basically the map follow the player, dont think we need this
+
+    // ----- STORE MAP INFO -----
+    this.gridWidth = map.width;
+    this.gridHeight = map.height;
+    this.tileSize = map.tileWidth; 
+
+    // ----- REGISTER SCENE -----
     this.registry.set('isoScene', this);
-    
-    // Signal API is ready
-    console.log('About to resolve ready promise, _readyResolve exists?', typeof _readyResolve !== 'undefined');
-    if (_readyResolve) {
-      console.log('Resolving ready promise!');
-      _readyResolve();
-    } else {
-      console.error('_readyResolve is not defined!');
-    }
+    if (_readyResolve) _readyResolve();
+
+    console.log('Map loaded successfully!');
   }
 
+
   createPlayerTexture() {
-    // Create a simple colored rectangle texture for the player
     const graphics = this.add.graphics();
-    graphics.fillStyle(0xff4444); // Red color
+    graphics.fillStyle(0xff4444);
     graphics.fillRect(0, 0, 16, 16);
     graphics.generateTexture('player', 16, 16);
     graphics.destroy();
   }
 
-  spawnTiles() {
-    var tile;
-
-    // Use the same coordinate system as the interaction example
-    for (var xx = 0; xx < 256; xx += 38) {
-      for (var yy = 0; yy < 256; yy += 38) {
-        tile = this.add.isoSprite(xx, yy, 0, 'tile', this.isoGroup);
-        tile.setInteractive();
-
-        tile.on('pointerover', function() {
-          this.setTint(0x86bfda);
-          this.isoZ += 5;
-        });
-
-        tile.on('pointerout', function() {
-          this.clearTint();
-          this.isoZ -= 5;
-        });
-      }
-    }
-  }
-  
   createPlayer() {
-    // Convert grid position to world coordinates
     const isoX = this.playerGridX * this.tileSize;
     const isoY = this.playerGridY * this.tileSize;
-    
-    this.player = this.add.isoSprite(isoX, isoY, 10, 'player', this.playerGroup);
-    this.player.setScale(1.5); // Make it a bit larger
+    this.player = this.add.isoSprite(isoX, isoY, 10, 'player');
+    // this.player.setOrigin(0.5, 1); // Supposely set the player origin to bottom center, but seems off
+    this.player.setScale(1.5);
   }
-  
-  update() {
-    // Update loop - no keyboard input, controlled by API only
-  }
-} // End of IsoMoveExample class
 
-// ------------------ ACTION QUEUE + PUBLIC API ------------------
-let game = null; // Will be set after game is created
+  update() {}
+}
+
+// ------------------ API + Helper Functions ------------------
+let game = null;
 const _queue = [];
 let _running = false;
 let _readyResolve;
-const _ready = new Promise(res => {
-  _readyResolve = res;
-});
+const _ready = new Promise(res => { _readyResolve = res; });
 
 function _enqueue(label, fn) {
   return new Promise((resolve, reject) => {
@@ -142,22 +138,17 @@ async function _drain() {
   _running = false;
 }
 
-// Helper to get scene
 function _getScene() {
   if (!game) return null;
   return game.scene.getScene('IsoMoveExample');
 }
 
-// ------------------ API Implementation ------------------
-
+// Movement + Facing logic stays the same
 function _rotate(delta) {
   return new Promise((resolve) => {
     const scene = _getScene();
     if (!scene) return resolve(false);
-    
     scene.playerDirection = (scene.playerDirection + delta + 4) % 4;
-    
-    // Rotate the player sprite to show direction
     const angle = scene.playerDirection * 90;
     scene.tweens.add({
       targets: scene.player,
@@ -173,12 +164,9 @@ function _face(dirName) {
   return new Promise((resolve) => {
     const scene = _getScene();
     if (!scene) return resolve(false);
-    
     const dirMap = { north: 0, east: 1, south: 2, west: 3, up: 0, right: 1, down: 2, left: 3 };
     if (!(dirName in dirMap)) return resolve(false);
-    
     scene.playerDirection = dirMap[dirName];
-    
     const angle = scene.playerDirection * 90;
     scene.tweens.add({
       targets: scene.player,
@@ -191,47 +179,21 @@ function _face(dirName) {
 }
 
 function _getForwardPosition(scene) {
-  let newX = scene.playerGridX;
-  let newY = scene.playerGridY;
-  
-  switch (scene.playerDirection) {
-    case 0: // North
-      newY -= 1;
-      break;
-    case 1: // East
-      newX += 1;
-      break;
-    case 2: // South
-      newY += 1;
-      break;
-    case 3: // West
-      newX -= 1;
-      break;
-  }
-  
-  return { x: newX, y: newY };
+  let { playerGridX: x, playerGridY: y } = scene;
+  if (scene.playerDirection === 0) y -= 1;
+  else if (scene.playerDirection === 1) x += 1;
+  else if (scene.playerDirection === 2) y += 1;
+  else if (scene.playerDirection === 3) x -= 1;
+  return { x, y };
 }
 
 function _getBackwardPosition(scene) {
-  let newX = scene.playerGridX;
-  let newY = scene.playerGridY;
-  
-  switch (scene.playerDirection) {
-    case 0: // North (go South)
-      newY += 1;
-      break;
-    case 1: // East (go West)
-      newX -= 1;
-      break;
-    case 2: // South (go North)
-      newY -= 1;
-      break;
-    case 3: // West (go East)
-      newX += 1;
-      break;
-  }
-  
-  return { x: newX, y: newY };
+  let { playerGridX: x, playerGridY: y } = scene;
+  if (scene.playerDirection === 0) y += 1;
+  else if (scene.playerDirection === 1) x -= 1;
+  else if (scene.playerDirection === 2) y -= 1;
+  else if (scene.playerDirection === 3) x += 1;
+  return { x, y };
 }
 
 function _isValidPosition(scene, x, y) {
@@ -242,16 +204,13 @@ function _moveToPosition(scene, gridX, gridY) {
   return new Promise((resolve) => {
     if (scene.isMoving) return resolve(false);
     if (!_isValidPosition(scene, gridX, gridY)) return resolve(false);
-    
     scene.isMoving = true;
-    
     const isoX = gridX * scene.tileSize;
     const isoY = gridY * scene.tileSize;
-    
     scene.tweens.add({
       targets: scene.player,
-      isoX: isoX,
-      isoY: isoY,
+      isoX,
+      isoY,
       duration: 300,
       ease: 'Power2',
       onComplete: () => {
@@ -267,11 +226,10 @@ function _moveToPosition(scene, gridX, gridY) {
 async function _multiStep(sign, steps) {
   const scene = _getScene();
   if (!scene) return false;
-  
   for (let i = 0; i < steps; i++) {
     const newPos = sign > 0 ? _getForwardPosition(scene) : _getBackwardPosition(scene);
     const ok = await _moveToPosition(scene, newPos.x, newPos.y);
-    if (!ok) return false; // stop early if blocked
+    if (!ok) return false;
   }
   return true;
 }
@@ -281,41 +239,30 @@ function _setPosition(tx, ty) {
     const scene = _getScene();
     if (!scene) return resolve(false);
     if (!_isValidPosition(scene, tx, ty)) return resolve(false);
-    
     const isoX = tx * scene.tileSize;
     const isoY = ty * scene.tileSize;
-    
     scene.player.isoX = isoX;
     scene.player.isoY = isoY;
     scene.playerGridX = tx;
     scene.playerGridY = ty;
-    
     resolve(true);
   });
 }
 
-// Expose the API
+// Public API
 window.IsoMoveAPI = {
-  /** await IsoMoveAPI.ready() before issuing actions */
   ready: () => _ready,
-
-  /** Movement & rotation (Promise-based) */
   rotateLeft: () => _enqueue('rotateLeft', async () => _rotate(-1)),
   rotateRight: () => _enqueue('rotateRight', async () => _rotate(+1)),
   moveForward: (steps = 1) => _enqueue('moveForward', async () => _multiStep(+1, steps)),
   moveBackward: (steps = 1) => _enqueue('moveBackward', async () => _multiStep(-1, steps)),
-
-  /** Utilities */
   face: (dirName) => _enqueue('face', async () => _face(dirName)),
   setPosition: (tx, ty) => _enqueue('setPosition', async () => _setPosition(tx, ty)),
-
-  /** Read-only state (no promises needed) */
   getState: () => {
     const scene = _getScene();
     if (!scene) return null;
-    
     return {
-      direction: scene.playerDirection, // 0=North, 1=East, 2=South, 3=West
+      direction: scene.playerDirection,
       playerGridX: scene.playerGridX,
       playerGridY: scene.playerGridY,
       isMoving: scene.isMoving
@@ -323,17 +270,15 @@ window.IsoMoveAPI = {
   }
 };
 
-// Create the game after API is defined
-let config = {
+// ------------------ Phaser Game Config ------------------
+const config = {
   type: Phaser.AUTO,
   width: 800,
   height: 600,
   pixelArt: true,
   parent: 'game',
   scene: IsoMoveExample,
-  physics: {
-    default: 'arcade'
-  }
+  physics: { default: 'arcade' }
 };
 
 game = new Phaser.Game(config);
